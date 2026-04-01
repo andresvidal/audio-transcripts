@@ -17,7 +17,8 @@ from .output.vtt import write_vtt
 from .scanner import scan_audio_files
 from .transcribers.base import BaseTranscriber, TranscriptResult
 
-console = Console()
+# force_terminal=True enables in-place Live updates in Colab/Jupyter (non-TTY environments)
+console = Console(force_terminal=True)
 
 FORMAT_WRITERS = {
     "txt": (write_txt, ".txt"),

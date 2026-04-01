@@ -29,7 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 load_dotenv()
 
-console = Console()
+# force_terminal=True enables in-place Live updates in Colab/Jupyter (non-TTY environments)
+console = Console(force_terminal=True)
 
 _BACKENDS = ["whisperx", "faster-whisper", "huggingface", "openai", "gemini"]
 _FORMATS = ["txt", "json", "srt", "vtt"]
@@ -188,6 +189,13 @@ def main(
     console.rule("[bold]Audio Transcripts")
     console.print(f"  [bold]Folder:[/bold]   {folder}")
     console.print(f"  [bold]Backend:[/bold]  {backend}  ({resolved_model})")
+    if backend in ("whisperx", "faster-whisper", "huggingface"):
+        try:
+            import torch
+            _device = "CUDA" if torch.cuda.is_available() else "CPU"
+        except ImportError:
+            _device = "CPU"
+        console.print(f"  [bold]Device:[/bold]   {_device}")
     console.print(f"  [bold]Output:[/bold]   {resolved_output}")
     console.print(f"  [bold]Formats:[/bold]  {', '.join(resolved_formats)}")
     if backend == "whisperx" and not no_diarize:
