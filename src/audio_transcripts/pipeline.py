@@ -17,8 +17,25 @@ from .output.vtt import write_vtt
 from .scanner import scan_audio_files
 from .transcribers.base import BaseTranscriber, TranscriptResult
 
-# force_terminal=True enables in-place Live updates in Colab/Jupyter (non-TTY environments)
-console = Console(force_terminal=True)
+
+def _make_console() -> Console:
+    """Return a Console suited to the current environment.
+
+    In Jupyter/Colab the standard Console emits ANSI cursor-movement codes
+    that the notebook output pane ignores, causing every Live refresh to print
+    on a new line.  force_jupyter=True routes rendering through IPython.display
+    so Live updates happen in-place.
+    """
+    try:
+        from IPython import get_ipython
+        if get_ipython() is not None:
+            return Console(force_jupyter=True)
+    except ImportError:
+        pass
+    return Console()
+
+
+console = _make_console()
 
 FORMAT_WRITERS = {
     "txt": (write_txt, ".txt"),
