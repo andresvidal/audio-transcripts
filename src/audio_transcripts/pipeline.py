@@ -18,13 +18,19 @@ from .scanner import scan_audio_files
 from .transcribers.base import BaseTranscriber, TranscriptResult
 
 
-def _is_jupyter() -> bool:
-    """Return True when running inside a Jupyter / Colab kernel."""
-    try:
-        from IPython import get_ipython
-        return get_ipython() is not None
-    except ImportError:
-        return False
+def _is_interactive_terminal() -> bool:
+    """Return True only when stdout is a real TTY that supports cursor movement.
+
+    Rich's Live display uses ANSI cursor-movement codes (e.g. move-up N lines)
+    to overwrite previous frames.  These codes are silently ignored in:
+      - Colab / Jupyter (!python subprocess)
+      - piped output  (python transcribe.py | tee log.txt)
+      - Docker without -t
+    In all of those cases isatty() returns False and we fall back to plain
+    per-file console.print() lines.
+    """
+    import sys
+    return sys.stdout.isatty()
 
 
 console = Console()
@@ -111,11 +117,12 @@ def run_pipeline(
     skip_count = 0
     error_files: list[tuple[str, str]] = []
 
-    if _is_jupyter():
-        # ── Jupyter / Colab: no Live display — plain per-file status lines ──
-        # Rich's Live relies on cursor-movement ANSI codes to update in-place;
-        # Colab ignores those codes, so every refresh prints a new line.
-        # Plain console.print() calls are the only reliable option here.
+    if not _is_interactive_terminal():
+        # ── Non-TTY (Colab, pipe, Docker): plain per-file status lines ──────
+        # Rich's Live relies on ANSI cursor-movement codes (move-up N lines) to
+        # overwrite the previous frame.  Colab ignores those codes even when
+        # invoked via !python (subprocess), causing every refresh to print a
+        # new line.  isatty()=False is the reliable signal to avoid Live.
         total = len(audio_files)
         for i, audio_file in enumerate(audio_files, 1):
             key = str(audio_file)
