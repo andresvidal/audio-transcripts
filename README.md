@@ -93,7 +93,13 @@ in your `.env`.
 source .venv/bin/activate
 
 # Transcribe a folder — WhisperX default, speaker-labeled output
+# (defaults: --model small, -f txt -f srt)
 python transcribe.py ./audio-files
+
+# Available model sizes (whisperx / faster-whisper), fastest → most accurate:
+#   tiny | base | small | medium | large-v2 | large-v3 | large-v3-turbo
+python transcribe.py ./audio-files --model medium   # balanced
+python transcribe.py ./audio-files --model large-v3  # best accuracy
 
 # Specify output formats (default: txt, json)
 python transcribe.py ./audio-files -f txt -f srt -f json
@@ -172,6 +178,23 @@ rm -rf .cache/whisperx/
 | `openai` | ❌ No | $0.006/min | No GPU, small files |
 | `gemini` | ❌ No | ~$0.06/hr | Transcribe + summarize |
 
+## Models
+
+Applies to `whisperx` and `faster-whisper` backends. Pass with `--model <size>`.
+
+| Model | Params | Speed (M1 CPU) | Accuracy | Notes |
+|---|---|---|---|---|
+| `tiny` | 39 M | ~3–5 min / 30 min audio | Low | Quick tests only |
+| `base` | 74 M | ~5–8 min / 30 min audio | Low–Medium | |
+| `small` ⭐ | 244 M | ~10–20 min / 30 min audio | Medium | **Default** — good balance |
+| `medium` | 769 M | ~30–50 min / 30 min audio | High | Recommended upgrade |
+| `large-v2` | 1.5 B | ~60–100 min / 30 min audio | Very high | |
+| `large-v3` | 1.5 B | ~60–120 min / 30 min audio | Best | Latest OpenAI model |
+| `large-v3-turbo` | 809 M | ~20–35 min / 30 min audio | Very high | Distilled large-v3, fast + accurate |
+
+> Speeds are approximate for Apple M1 CPU. GPU (CUDA) is typically 5–10× faster.
+> `large-v3-turbo` is the best accuracy-to-speed tradeoff if `small` isn't accurate enough.
+
 ## Output formats
 
 | Format | Description |
@@ -227,9 +250,10 @@ WhisperX does not support MPS (Apple Silicon GPU) and falls back to CPU. Expecte
 
 | Model | 30 min audio on M1 CPU |
 |---|---|
-| `large-v3` (default) | 60–120 min |
+| `large-v3` | 60–120 min |
 | `medium` | 30–50 min |
-| `small` | 10–20 min |
+| `small` ⭐ default | 10–20 min |
+| `tiny` / `base` | 3–8 min |
 
 Use `--model small` or `--model medium` for faster results:
 

@@ -34,11 +34,11 @@ console = Console()
 _BACKENDS = ["whisperx", "faster-whisper", "huggingface", "openai", "gemini"]
 _FORMATS = ["txt", "json", "srt", "vtt"]
 _DEFAULT_BACKEND = "whisperx"
-_DEFAULT_FORMATS = ("txt",)
+_DEFAULT_FORMATS = ("txt","srt",)
 
 _DEFAULT_MODEL: dict[str, str] = {
-    "whisperx": "large-v3",
-    "faster-whisper": "large-v3",
+    "whisperx": "small",
+    "faster-whisper": "small",
     "huggingface": "openai/whisper-large-v3-turbo",
     "openai": "whisper-1",
     "gemini": "gemini-2.0-flash",
