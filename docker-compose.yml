@@ -1,0 +1,32 @@
+services:
+  transcribe:
+    build: .
+    image: audio-transcripts:latest
+
+    # ── Volumes ─────────────────────────────────────────────────────────────
+    volumes:
+      # Audio input — put your files in ./audio-files on the host
+      - ./audio-files:/audio:ro
+      # Transcript output — results appear in ./transcripts on the host
+      - ./transcripts:/transcripts
+      # Persistent model cache — avoids re-downloading multi-GB models on each run
+      - hf-model-cache:/root/.cache/huggingface
+
+    # ── Environment ──────────────────────────────────────────────────────────
+    # Reads HF_TOKEN, OPENAI_API_KEY, GOOGLE_API_KEY from your .env file
+    env_file: .env
+
+    # ── Default command ──────────────────────────────────────────────────────
+    # Transcribe everything in /audio with WhisperX (speaker-labeled output).
+    # Override at runtime:
+    #   docker compose run --rm transcribe /audio --backend faster-whisper -f txt
+    command: >
+      /audio
+      --output-dir /transcripts
+      --formats txt
+      --formats srt
+      --formats json
+      --language en
+
+volumes:
+  hf-model-cache:

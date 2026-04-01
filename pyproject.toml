@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-transcripts"
+version = "0.1.0"
+description = "Local-first audio transcription with speaker diarization"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "click>=8.1",
+    "rich>=13.0",
+    "ffmpeg-python>=0.2",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Faster-Whisper only (no diarization, no ctranslate2 version conflict)
+faster-whisper = [
+    "faster-whisper>=1.0",
+]
+# WhisperX — install SEPARATELY from faster-whisper to avoid ctranslate2 conflicts.
+# PyPI release pins ctranslate2==4.4.0 which has no Python 3.14 wheel; use git:
+#   pip install git+https://github.com/m-bain/whisperX.git
+whisperx = [
+    "torch>=2.2",
+    "torchaudio>=2.2",
+]
+# HuggingFace Transformers backend
+huggingface = [
+    "transformers>=4.40",
+    "torch>=2.2",
+    "torchaudio>=2.2",
+]
+# All local backends (excludes whisperx — install it separately via git)
+local = [
+    "faster-whisper>=1.0",
+    "transformers>=4.40",
+    "torch>=2.2",
+    "torchaudio>=2.2",
+]
+# Cloud backends — requires API keys
+cloud = [
+    "openai>=1.30",
+    "google-genai>=1.0",    # new Gemini SDK (replaces google-generativeai)
+]
+# Everything except whisperx (install whisperx from git separately)
+all = [
+    "faster-whisper>=1.0",
+    "transformers>=4.40",
+    "torch>=2.2",
+    "torchaudio>=2.2",
+    "openai>=1.30",
+    "google-genai>=1.0",
+]
+
+# Run as: python transcribe.py <folder> [options]
+# (no console_scripts entry — CLI lives in transcribe.py at the project root)
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
