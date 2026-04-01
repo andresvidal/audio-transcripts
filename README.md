@@ -137,15 +137,34 @@ python transcribe.py ./audio-files --dry-run
 
 ## Google Colab quick start
 
+> **Before you start:** go to Runtime → Change runtime type and select a **T4 GPU** (or any available GPU).
+
 1. Clone + install
-```bash
-%cd /content
-!git clone https://github.com/andresvidal/audio-transcripts.git
-%cd audio-transcripts
-!pip install -e ".[local]"
-!pip install git+https://github.com/m-bain/whisperX.git
-!apt-get update -qq && apt-get install -y ffmpeg
-```
+
+   Run these three cells **in order**. Splitting them avoids the session restart that
+   occurs when torch is reinstalled mid-cell.
+
+   **Cell 1 — system deps** (ffmpeg is usually pre-installed in Colab, but this is a no-op if so):
+   ```bash
+   !apt-get install -y ffmpeg
+   ```
+
+   **Cell 2 — core package** (click, rich, dotenv only — no torch):
+   ```bash
+   %cd /content
+   !git clone https://github.com/andresvidal/audio-transcripts.git
+   %cd /content/audio-transcripts
+   !pip install -e "."
+   ```
+
+   **Cell 3 — WhisperX** (installs torch/torchaudio compatible versions automatically):
+   ```bash
+   !pip install git+https://github.com/m-bain/whisperX.git
+   ```
+
+   > **Why split?** `pip install -e ".[local]"` re-installs torch, which conflicts with
+   > Colab's pre-installed torch and triggers a session restart. Installing the core
+   > package first (no torch) then letting WhisperX manage its own torch version avoids this.
 
 2. Set secrets from Colab userdata (or other secret manager)
 ```bash
