@@ -82,7 +82,7 @@ def _build_transcriber(
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.argument("folder", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument("folder", type=click.Path(exists=True, file_okay=True, dir_okay=True, path_type=Path))
 @click.option(
     "--backend", "-b",
     default=_DEFAULT_BACKEND, show_default=True,
@@ -163,7 +163,13 @@ def main(
     no_diarize: bool,
     speaker_names: str | None,
 ) -> None:
-    """Transcribe audio files in FOLDER and write speaker-labeled transcripts."""
+    """Transcribe audio files in FOLDER (or a single FILE) and write speaker-labeled transcripts."""
+
+    # Accept a single file as the target — treat its parent as the folder
+    single_file: Path | None = None
+    if folder.is_file():
+        single_file = folder
+        folder = folder.parent
 
     resolved_model = model or _DEFAULT_MODEL[backend]
     resolved_output = output_dir or (Path.cwd() / "transcripts")
@@ -230,6 +236,7 @@ def main(
         skip_existing=skip_existing,
         dry_run=dry_run,
         speaker_names=speaker_map,
+        files=[single_file] if single_file else None,
     )
 
 

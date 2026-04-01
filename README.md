@@ -112,6 +112,13 @@ python transcribe.py ./audio-files \
 python transcribe.py ./audio-files --overwrite \
   --speaker-names '{"SPEAKER_00": "Alice", "SPEAKER_01": "Bob"}'
 
+# Target a single file instead of a whole folder
+python transcribe.py ./audio-files/interview.m4a -f txt -f srt
+
+# Re-label a single file with speaker names
+python transcribe.py ./audio-files/interview.m4a --overwrite \
+  --speaker-names '{"SPEAKER_00": "Alice", "SPEAKER_01": "Bob"}'
+
 # Single-speaker, no diarization (faster)
 python transcribe.py ./audio-files --backend faster-whisper
 

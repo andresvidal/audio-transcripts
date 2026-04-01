@@ -59,6 +59,7 @@ def run_pipeline(
     skip_existing: bool = True,
     dry_run: bool = False,
     speaker_names: Optional[dict[str, str]] = None,
+    files: Optional[list[Path]] = None,
 ) -> None:
     """Scan *folder* for audio files and transcribe each one.
 
@@ -71,8 +72,9 @@ def run_pipeline(
         skip_existing: Skip files already present in the manifest.
         dry_run: Only list discovered files; do not transcribe.
         speaker_names: Optional map from SPEAKER_XX to human names.
+        files: If given, process only these files instead of scanning folder.
     """
-    audio_files = scan_audio_files(folder, recursive=recursive)
+    audio_files = files if files is not None else scan_audio_files(folder, recursive=recursive)
 
     if not audio_files:
         console.print(f"[yellow]No audio files found in {folder}[/yellow]")
