@@ -18,24 +18,16 @@ from .scanner import scan_audio_files
 from .transcribers.base import BaseTranscriber, TranscriptResult
 
 
-def _make_console() -> Console:
-    """Return a Console suited to the current environment.
-
-    In Jupyter/Colab the standard Console emits ANSI cursor-movement codes
-    that the notebook output pane ignores, causing every Live refresh to print
-    on a new line.  force_jupyter=True routes rendering through IPython.display
-    so Live updates happen in-place.
-    """
+def _is_jupyter() -> bool:
+    """Return True when running inside a Jupyter / Colab kernel."""
     try:
         from IPython import get_ipython
-        if get_ipython() is not None:
-            return Console(force_jupyter=True)
+        return get_ipython() is not None
     except ImportError:
-        pass
-    return Console()
+        return False
 
 
-console = _make_console()
+console = Console()
 
 FORMAT_WRITERS = {
     "txt": (write_txt, ".txt"),
@@ -119,45 +111,25 @@ def run_pipeline(
     skip_count = 0
     error_files: list[tuple[str, str]] = []
 
-    progress = Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TextColumn("{task.completed}/{task.total} files"),
-        TimeElapsedColumn(),
-        console=console,
-    )
-    stage_progress = Progress(
-        SpinnerColumn("dots"),
-        TextColumn("  [dim]{task.description}[/dim]"),
-        TimeElapsedColumn(),
-        console=console,
-    )
-
-    with Live(console=console, refresh_per_second=8) as live:
-        from rich.console import Group
-        from rich.panel import Panel
-
-        def _refresh(status: str = "") -> None:
-            live.update(Group(progress, stage_progress))
-
-        file_task = progress.add_task("Transcribing…", total=len(audio_files))
-        stage_task = stage_progress.add_task("", total=None)
-
-        for audio_file in audio_files:
+    if _is_jupyter():
+        # ── Jupyter / Colab: no Live display — plain per-file status lines ──
+        # Rich's Live relies on cursor-movement ANSI codes to update in-place;
+        # Colab ignores those codes, so every refresh prints a new line.
+        # Plain console.print() calls are the only reliable option here.
+        total = len(audio_files)
+        for i, audio_file in enumerate(audio_files, 1):
             key = str(audio_file)
-            progress.update(file_task, description=f"[bold blue]{audio_file.name}")
 
             if skip_existing and _already_done(manifest, key, formats):
                 console.print(f"  [dim]skip[/dim]  {audio_file.name}")
                 skip_count += 1
-                progress.advance(file_task)
                 continue
 
-            def _stage(msg: str) -> None:
-                stage_progress.update(stage_task, description=msg)
-                _refresh()
+            console.print(f"  [{i}/{total}] [bold blue]{audio_file.name}[/bold blue]")
+
+            def _stage(msg: str) -> None:  # noqa: E306
+                if msg:
+                    console.print(f"        [dim]{msg}[/dim]")
 
             try:
                 result: TranscriptResult = transcriber.transcribe(  # type: ignore[union-attr]
@@ -183,11 +155,10 @@ def run_pipeline(
                 }
                 _save_manifest(output_dir, manifest)
                 done_count += 1
-                stage_progress.update(stage_task, description="")
-                console.print(f"  [green]✓[/green]     {audio_file.name}")
+                console.print(f"  [green]✓[/green]  {audio_file.name}")
 
             except Exception as exc:
-                console.print(f"  [red]✗[/red]     {audio_file.name}: {exc}")
+                console.print(f"  [red]✗[/red]  {audio_file.name}: {exc}")
                 error_files.append((audio_file.name, str(exc)))
                 manifest["files"][key] = {
                     "status": "error",
@@ -195,9 +166,87 @@ def run_pipeline(
                     "failed_at": datetime.now(timezone.utc).isoformat(),
                 }
                 _save_manifest(output_dir, manifest)
-                stage_progress.update(stage_task, description="")
 
-            progress.advance(file_task)
+    else:
+        # ── Terminal: rich Live display with animated progress bar ────────────
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("{task.completed}/{task.total} files"),
+            TimeElapsedColumn(),
+            console=console,
+        )
+        stage_progress = Progress(
+            SpinnerColumn("dots"),
+            TextColumn("  [dim]{task.description}[/dim]"),
+            TimeElapsedColumn(),
+            console=console,
+        )
+
+        with Live(console=console, refresh_per_second=8) as live:
+            from rich.console import Group
+
+            def _refresh(status: str = "") -> None:
+                live.update(Group(progress, stage_progress))
+
+            file_task = progress.add_task("Transcribing…", total=len(audio_files))
+            stage_task = stage_progress.add_task("", total=None)
+
+            for audio_file in audio_files:
+                key = str(audio_file)
+                progress.update(file_task, description=f"[bold blue]{audio_file.name}")
+
+                if skip_existing and _already_done(manifest, key, formats):
+                    console.print(f"  [dim]skip[/dim]  {audio_file.name}")
+                    skip_count += 1
+                    progress.advance(file_task)
+                    continue
+
+                def _stage(msg: str) -> None:  # noqa: E306
+                    stage_progress.update(stage_task, description=msg)
+                    _refresh()
+
+                try:
+                    result: TranscriptResult = transcriber.transcribe(  # type: ignore[union-attr]
+                        audio_file, status_callback=_stage
+                    )
+
+                    if speaker_names:
+                        result.apply_speaker_names(speaker_names)
+
+                    stem = audio_file.stem
+                    for fmt in formats:
+                        writer_fn, ext = FORMAT_WRITERS[fmt]
+                        writer_fn(result, output_dir / (stem + ext))
+
+                    manifest["files"][key] = {
+                        "status": "done",
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "backend": transcriber.backend_name,  # type: ignore[union-attr]
+                        "model": transcriber.model,  # type: ignore[union-attr]
+                        "diarization": result.diarization,
+                        "speakers_detected": result.speakers_detected,
+                        "outputs": formats,
+                    }
+                    _save_manifest(output_dir, manifest)
+                    done_count += 1
+                    stage_progress.update(stage_task, description="")
+                    console.print(f"  [green]✓[/green]     {audio_file.name}")
+
+                except Exception as exc:
+                    console.print(f"  [red]✗[/red]     {audio_file.name}: {exc}")
+                    error_files.append((audio_file.name, str(exc)))
+                    manifest["files"][key] = {
+                        "status": "error",
+                        "error": str(exc),
+                        "failed_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    _save_manifest(output_dir, manifest)
+                    stage_progress.update(stage_task, description="")
+
+                progress.advance(file_task)
 
     # ── Summary ───────────────────────────────────────────────────────────────
     console.print()
