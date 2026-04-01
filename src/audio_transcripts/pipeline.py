@@ -26,10 +26,16 @@ def _is_interactive_terminal() -> bool:
       - Colab / Jupyter (!python subprocess)
       - piped output  (python transcribe.py | tee log.txt)
       - Docker without -t
-    In all of those cases isatty() returns False and we fall back to plain
-    per-file console.print() lines.
+
+    Colab's !-shell allocates a pseudo-TTY for subprocesses, so isatty()
+    incorrectly returns True there.  We detect Colab explicitly via env vars
+    that are always set in its runtime.
     """
+    import os
     import sys
+
+    if os.environ.get("COLAB_BACKEND_VERSION") or os.environ.get("COLAB_RELEASE_TAG"):
+        return False
     return sys.stdout.isatty()
 
 
