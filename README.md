@@ -159,19 +159,19 @@ os.environ["GOOGLE_API_KEY"] = userdata.get("GOOGLE_API_KEY")
 
 3. Put the audio file(s) in /content/audio-files (upload via Colab UI or copy from Drive)
 ```bash
-!mkdir -p /content/audio-files
+!mkdir -p /content/audio-files /content/transcripts
 # e.g. (if you copied to drive):
 # !cp /content/drive/MyDrive/audio/* /content/audio-files
 ```
 
-4. Transcribe with whisperx small and txt/srt output
+4. Transcribe with whisperx small and txt/srt output and save to /content/transcripts.
 ```bash
-!python transcribe.py /content/audio-files --backend whisperx --model small --language en -f txt -f srt
+!python transcribe.py /content/audio-files --output-dir /content/transcripts --backend whisperx --model small --language en -f txt -f srt
 ```
 
 5. Re-label from cache with friendly speaker names
 ```bash
-!python transcribe.py /content/audio-files --overwrite \
+!python transcribe.py /content/audio-files --output-dir /content/transcripts --overwrite \
   --speaker-names '{"SPEAKER_00":"Alice","SPEAKER_01":"Bob"}' -f txt -f srt
 ```
 
@@ -243,34 +243,6 @@ Applies to `whisperx` and `faster-whisper` backends. Pass with `--model <size>`.
 | `json` | Full structured output with segments, timestamps, word scores, speaker IDs |
 | `srt` | SubRip subtitles (video players) |
 | `vtt` | WebVTT subtitles (web / QuickTime) |
-
-### Google Colab secrets example
-
-Use the new Colab `userdata` API to avoid storing credentials in code.
-
-```python
-from google.colab import userdata
-
-HF_TOKEN = userdata.get('HF_TOKEN')
-OPENAI_API_KEY = userdata.get('OPENAI_API_KEY')
-GOOGLE_API_KEY = userdata.get('GOOGLE_API_KEY')
-
-# If you prefer .env style (optional)
-with open('.env', 'w') as f:
-    f.write(f"HF_TOKEN={HF_TOKEN}\n")
-    f.write(f"OPENAI_API_KEY={OPENAI_API_KEY}\n")
-    f.write(f"GOOGLE_API_KEY={GOOGLE_API_KEY}\n")
-```
-
-Then run the pipeline:
-
-```bash
-!pip install -e ".[local]"
-!pip install git+https://github.com/m-bain/whisperX.git
-!apt-get update -qq && apt-get install -y ffmpeg
-
-!python transcribe.py /content/audio-files --backend whisperx --model small --language en -f txt -f srt
-```
 
 ### Example `txt` output
 
