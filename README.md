@@ -149,12 +149,13 @@ python transcribe.py ./audio-files --dry-run
    !apt-get install -y ffmpeg
    ```
 
-   **Cell 2 — core package** (click, rich, dotenv only — no torch):
+   **Cell 2 — clone + register package** (`--no-deps` skips all dependency resolution so
+   Colab's pre-installed click/rich/dotenv are left untouched — no session restart):
    ```bash
    %cd /content
    !git clone https://github.com/andresvidal/audio-transcripts.git
    %cd /content/audio-transcripts
-   !pip install -e "."
+   !pip install -e "." --no-deps
    ```
 
    **Cell 3 — WhisperX** (installs torch/torchaudio compatible versions automatically):
@@ -162,9 +163,9 @@ python transcribe.py ./audio-files --dry-run
    !pip install git+https://github.com/m-bain/whisperX.git
    ```
 
-   > **Why split?** `pip install -e ".[local]"` re-installs torch, which conflicts with
-   > Colab's pre-installed torch and triggers a session restart. Installing the core
-   > package first (no torch) then letting WhisperX manage its own torch version avoids this.
+   > **Why `--no-deps`?** Colab already ships click, rich, and python-dotenv.
+   > Without `--no-deps`, pip upgrades them, which causes a session restart.
+   > WhisperX (Cell 3) pulls in the correct torch version on its own.
 
 2. Set secrets from Colab userdata (or other secret manager)
 ```bash
